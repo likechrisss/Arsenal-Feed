@@ -1,0 +1,49 @@
+git clone https://github.com/bluesky-social/feed-generator-template.git
+cd feed-generator-template
+yarn install
+import { SubscriptionHandler } from '@atproto/xrpc-server';
+
+// Define Arsenal-related keywords
+const keywords = [
+  'arsenal', 'gunners', 'arteta', 'saka', 'odegaard', 'emirates',
+  '#arsenalfc', '#coyg', '#wearethearsenal'
+];
+
+const handlePostEvent: SubscriptionHandler = async (event) => {
+  if (event.type === 'post' && event.record.text) {
+    const text = event.record.text.toLowerCase();
+
+    // Check if the post matches any Arsenal-related keywords
+    if (keywords.some(keyword => text.includes(keyword))) {
+      // Store the post in the database (SQLite or another database of your choice)
+      await indexPost({
+        uri: event.uri,
+        text: event.record.text,
+        createdAt: event.record.createdAt,
+      });
+    }
+  }
+};
+
+export default handlePostEvent;
+import { SkeletonFeedPost } from '@atproto/app-feed-gen';
+
+export const arsenalFeed = async (cursor?: string): Promise<SkeletonFeedPost[]> => {
+  // Fetch Arsenal-related posts from the database
+  const posts = await fetchIndexedPosts({
+    topic: 'arsenal',
+    cursor, // Use cursor for pagination
+  });
+
+  return posts.map(post => ({
+    post: post.uri,
+    reason: 'Arsenal-related content',
+  }));
+};
+export const FEED_DETAILS = {
+  displayName: 'All Things Arsenal',
+  description: 'A curated feed for everything Arsenal FC: news, matches, players, and fans.',
+  avatar: 'https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg', // Arsenal logo or another image
+};
+
+export const FEEDGEN_HOSTNAME = process.env.FEEDGEN_HOSTNAME || 'https://your-feedgen-service.com';
